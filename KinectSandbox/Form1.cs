@@ -36,6 +36,7 @@ namespace KinectSandbox
             {
                 outputDevice.Open();
             }
+            outputDevice.SendProgramChange(Channel.Channel1, Instrument.Oboe);
         }
 
         public void CloseOutput()
@@ -46,6 +47,13 @@ namespace KinectSandbox
         public void OnDisable()
         {
             if (outputDevice != null && outputDevice.IsOpen) outputDevice.Close();
+        }
+
+        public float scaleBetween(float input, float minInput, float maxInput, float minOutput = 0, float maxOutput = 16383)
+        {
+            float fraction = (input - minInput) / (maxInput - minInput);
+            float result = minOutput + (fraction * (maxOutput - minOutput));
+            return result;
         }
 
         public void InitialiseKinect()
@@ -108,37 +116,48 @@ namespace KinectSandbox
 
                         label1.Text = "leftX: " + leftHand.Position.X.ToString("##.##");
                         label2.Text = "leftY: " + leftHand.Position.Y.ToString("##.##");
-                        label3.Text = "leftCalc: " + calc.ToString();
+                        //label3.Text = "leftCalc: " + calc.ToString();
+                        label3.Text = "leftCalc: " + (int)scaleBetween(leftHand.Position.X, (float)-0.5, (float)0.5);
                         label4.Text = "LeftState: " + left;
-                        label5.Text = "RightState: " + right;
+                        label5.Text = "Volume: " + scaleBetween(leftHand.Position.Y, (float)-0.3, (float)0.3, 30, 127).ToString();
+                        //label5.Text = "RightState: " + right;
                         OutputSound(left, right, leftHand.Position.X, leftHand.Position.Y, rightHand.Position.X, rightHand.Position.Y);
                     }
                 }
             }
         }
 
-        public void OutputSound(HandState left, HandState right, float leftY, float leftX, float rightY, float rightX)
+        public void OutputSound(HandState left, HandState right, float leftX, float leftY, float rightX, float rightY)
         {
-            if(left != lastLeftState)
-            {
+            //if(left != lastLeftState)
+            //{
                 if (left.Equals(HandState.Closed))
                 {
-                    if (NoteOn)
-                    {
-                        outputDevice.SendPitchBend(Channel.Channel1, 7000);
-                    }
-                    else
+                    if (!NoteOn)
                     {
                         outputDevice.SendNoteOn(Channel.Channel1, Pitch.C4, 80);
                         NoteOn = true;
                     }
-                }
-                else if (left.Equals(HandState.Open))
+
+                try
                 {
-                    outputDevice.SendNoteOff(Channel.Channel1, Pitch.C4, 80);
+                    outputDevice.SendPitchBend(Channel.Channel1, (int)scaleBetween(leftX, (float)-0.5, (float)0.5));
+                    outputDevice.SendControlChange(Channel.Channel1, Midi.Control.Volume, (int)scaleBetween(leftY, (float)-0.3, (float)0.3, 30, 127));
+
+                }
+                catch (Exception e)
+                {
+
+                }
+                }
+                // else if (left.Equals(HandState.Open))
+                else
+                {
+                
+                    outputDevice.SendControlChange(Channel.Channel1, Midi.Control.AllNotesOff, 0);
                     NoteOn = false;
                 }
-            }
+            //}
         }
 
         public Form1()
