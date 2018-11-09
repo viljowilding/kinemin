@@ -20,6 +20,7 @@ namespace KinectSandbox
 
         HandState lastLeftState = HandState.Open;
         HandState lastRightState = HandState.Open;
+        bool NoteOn = false;
 
         OutputDevice outputDevice;
 
@@ -91,30 +92,53 @@ namespace KinectSandbox
 
                         Joint leftHand = joints[JointType.HandLeft];
                         Joint rightHand = joints[JointType.HandRight];
+                        HandState left = HandState.NotTracked;
+                        HandState right = HandState.NotTracked;
 
                         if ((body.HandLeftState != HandState.Unknown) && (body.HandLeftState != HandState.NotTracked))
                         {
-                            lastLeftState = body.HandLeftState;
+                            left = body.HandLeftState;
                         }
                         if ((body.HandRightState != HandState.Unknown) && (body.HandRightState != HandState.NotTracked))
                         {
-                            lastRightState = body.HandRightState;
+                            right = body.HandRightState;
                         }
+
+                        int calc = (int)((leftHand.Position.Y - 1) * 8191 + 8192);
 
                         label1.Text = "leftX: " + leftHand.Position.X.ToString("##.##");
                         label2.Text = "leftY: " + leftHand.Position.Y.ToString("##.##");
-                        label3.Text = "leftZ: " + leftHand.Position.Z.ToString("##.##");
-                        label4.Text = "LeftState: " + lastLeftState;
-                        label5.Text = "RightState: " + lastRightState;
-                        MakeMusic(lastLeftState, lastRightState, leftHand.Position.X, leftHand.Position.Y, rightHand.Position.X, rightHand.Position.Y);
+                        label3.Text = "leftCalc: " + calc.ToString();
+                        label4.Text = "LeftState: " + left;
+                        label5.Text = "RightState: " + right;
+                        OutputSound(left, right, leftHand.Position.X, leftHand.Position.Y, rightHand.Position.X, rightHand.Position.Y);
                     }
                 }
             }
         }
 
-        public void MakeMusic(HandState left, HandState right, float leftY, float leftX, float rightY, float rightX)
+        public void OutputSound(HandState left, HandState right, float leftY, float leftX, float rightY, float rightX)
         {
-            outputDevice.SendNoteOn(Channel.Channel1, Pitch.C4, 80);
+            if(left != lastLeftState)
+            {
+                if (left.Equals(HandState.Closed))
+                {
+                    if (NoteOn)
+                    {
+                        outputDevice.SendPitchBend(Channel.Channel1, 7000);
+                    }
+                    else
+                    {
+                        outputDevice.SendNoteOn(Channel.Channel1, Pitch.C4, 80);
+                        NoteOn = true;
+                    }
+                }
+                else if (left.Equals(HandState.Open))
+                {
+                    outputDevice.SendNoteOff(Channel.Channel1, Pitch.C4, 80);
+                    NoteOn = false;
+                }
+            }
         }
 
         public Form1()
